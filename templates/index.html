@@ -65,6 +65,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/1.9.0/showdown.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/MarketingPipeline/Ace-Editor-Web-Component@1.0.1/dist/ace-editor-wc.min.js" defer></script> 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/MarketingPipeline/Ace-Editor-Web-Component@v1.0.1/dist/ace-editor-wc.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     
     <script>
         var socket = io.connect('https://' + document.domain + ':' + location.port);
@@ -74,7 +75,7 @@
             console.log( message );
             var htmlText = (new showdown.Converter()).makeHtml(message);
             var div = $('<div class="message computer-message">' + htmlText + '</div>');
-            div = pythonToAceEditor(div);
+            // div = pythonToAceEditor(div);
             chatContainer.append(div);
             chatContainer.animate({scrollTop: chatContainer.prop("scrollHeight")}, 500);
         });
@@ -82,13 +83,17 @@
           console.log('Socket connected : ' + req);
           soketId = req;
         });
+        // 소켓 연결 해제 이벤트 핸들러
+        socket.on('disconnect', function() {
+            console.log('Socket disconnected');
+        });
         $(document).ready(function() {
             $('#input-form').submit(function(event) {
                 event.preventDefault();
                 sendMessage();
             });
             $('#message').on('keydown', function(event) {
-                if (event.keyCode === 13) { // Enter 키의 keyCode는 13입니다.
+                if (event.keyCode === 13 && (event.keyCode === 13 && !event.shiftKey)) { // Enter 키의 keyCode는 13입니다.
                     event.preventDefault();
                     sendMessage();
                 }
@@ -102,8 +107,8 @@
             if (message) {
                 var chatContainer = $('#chat-container');
                 var htmlText = (new showdown.Converter()).makeHtml(message);
-                htmlText = htmlText.replaceAll("\n","<br>");
-                var div = $('<div class="message user-message">' + htmlText + '</div>');
+                // htmlText = htmlText.replaceAll("\n","<br>");
+                var div = $('<div class="message user-message"><pre>' + htmlText + '<pre></div>');
                 chatContainer.append(div);
                 chatContainer.animate({scrollTop: chatContainer.prop("scrollHeight")}, 500);
                 socket.emit('message', {message: message, room: soketId });

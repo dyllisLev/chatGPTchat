@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request
-from flask_socketio import SocketIO, emit, join_room
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.middleware.proxy_fix import ProxyFix
 import yaml
 import myai
@@ -10,6 +10,8 @@ class chatGPTChat:
 
     api_key = ""
     tokenKeys = ""
+    history = {}
+    chatGPT = None
 
     def __init__(self):
         self.app = Flask(__name__)
@@ -24,6 +26,16 @@ class chatGPTChat:
         self.app.config['SECRET_KEY'] = flaskKey
         self.app.logger.setLevel(logging.WARNING)
 
+        try:
+            self.chatGPT = myai.chatGPT(str(keys['apiKey']))
+
+        except Exception as e:
+            logging.debug('An error occurred:', e)
+    
+    def append_to_file(self, filename, text):
+        with open(filename, 'a') as f:
+            f.write(text+"\n")
+
     def get_yaml(self):
         with open('key.yaml', 'r') as file:
             try:
@@ -36,13 +48,24 @@ class chatGPTChat:
         @self.socketio.on('connect')
         def handle_connect():
             join_room(request.sid)
-            # logging.debug("===================")
-            # logging.debug(request.sid)
+            logging.debug("===================")
+            logging.debug("connect : " + request.sid)
             logging.debug("===================")
             remote_addr = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
             logging.debug('connect to IP : %s' % str(remote_addr))
             logging.debug("===================")
+            self.history[request.sid] = ""
             emit('connect', request.sid)
+        
+        @self.socketio.on('disconnect')
+        def handle_disconnect():
+            sid = request.sid
+            logging.debug("===================")
+            logging.debug("disconnect : " + request.sid)
+            logging.debug("===================")
+            if self.chatGPT.getHistory(request.sid) is not None:
+                del self.chatGPT.history[request.sid]
+            leave_room(sid)
 
         @self.app.route('/')
         def index():
@@ -53,15 +76,14 @@ class chatGPTChat:
             logging.debug('connect to IP : %s' % str(remote_addr))
             logging.debug("===================")
 
-            if token in self.tokenKeys.split(", "):
+            if token in self.get_yaml()['key'].split(", "):
                 return render_template('index.html')
             else:
                 return 'Unauthorized access!'
 
         @self.socketio.on('message')
         def handle_message(data):
-            logging.debug('received args: ' + data['message'])
-            logging.debug('received args: ' + data['room'])
+            
             remote_addr = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
             logging.debug('connect to IP : %s' % str(remote_addr))
             logging.debug("===================")
@@ -70,10 +92,22 @@ class chatGPTChat:
                 
                 logging.debug( "api_key :%s"%self.api_key)
 
-                for re in myai.openaiPromt(self.api_key, data['message']):
+                self.append_to_file("chat.log", "===================")
+                self.append_to_file("chat.log", '질문자 : ' + remote_addr + " / " + data['room'])
+                self.append_to_file("chat.log", '질문 : ' + data['message'])
+                
+                logging.debug("===================")
+                logging.debug('질문자 : ' + data['room'])
+                logging.debug('질문 : ' + data['message'])
+
+                for re in self.chatGPT.openaiPromt(data['room'], data['message']):
                     aimsg = str(re.message['content'])
-                    logging.debug(re.message['content'])
+                    self.append_to_file("chat.log", '답변 : ' + aimsg)
+                    logging.debug('답변 : ' + aimsg)
                     emit('response', aimsg, room=data['room'])
+                
+                self.append_to_file("chat.log", "===================")
+                logging.debug("===================")
 
             except Exception as e:
                 logging.debug('An error occurred:', e)
@@ -82,5 +116,6 @@ class chatGPTChat:
 
 
 if __name__ == '__main__':
+    
     app = chatGPTChat()
     app.run()
