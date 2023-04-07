@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat Room</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        #chat-container {
+            height: calc(100vh - 110px);
+            overflow-y: scroll;
+        }
+
+        .message {
+            padding: 0.5rem;
+            margin: 0.5rem;
+            max-width: 80%;
+            border-radius: 0.5rem;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            align-self: flex-start;
+            background-color: #d8d8d8;
+        }
+
+        .computer-message {
+            align-self: flex-end;
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        #message {
+            border-radius: 0.5rem 0 0 0.5rem;
+        }
+
+        #send-btn {
+            border-radius: 0 0.5rem 0.5rem 0;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid h-100">
+        <div class="row h-100">
+            <div class="col-md-8 h-100">
+                <div class="d-flex flex-column h-100">
+                    <div id="chat-container" class="flex-grow-1"></div>
+                    <form id="input-form" class="form-row align-items-center p-3" method="post">
+                        <div class="col-9 col-md-10 pr-md-1">
+                            <textarea id="message" name="message" class="form-control" placeholder="Type a message..." autocomplete="off"></textarea>
+                        </div>
+                        <div class="col-3 col-md-2">
+                            <button type="submit" id="send-btn" class="btn btn-block">Send</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.3/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/1.9.0/showdown.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/MarketingPipeline/Ace-Editor-Web-Component@1.0.1/dist/ace-editor-wc.min.js" defer></script> 
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/MarketingPipeline/Ace-Editor-Web-Component@v1.0.1/dist/ace-editor-wc.min.css">
+    
+    <script>
+        var socket = io.connect('https://' + document.domain + ':' + location.port);
+        var soketId = ""
+        socket.on('response', function(message) {
+            var chatContainer = $('#chat-container');
+            console.log( message );
+            var htmlText = (new showdown.Converter()).makeHtml(message);
+            var div = $('<div class="message computer-message">' + htmlText + '</div>');
+            div = pythonToAceEditor(div);
+            chatContainer.append(div);
+            chatContainer.animate({scrollTop: chatContainer.prop("scrollHeight")}, 500);
+        });
+        socket.on('connect', function(req) {
+          console.log('Socket connected : ' + req);
+          soketId = req;
+        });
+        $(document).ready(function() {
+            $('#input-form').submit(function(event) {
+                event.preventDefault();
+                sendMessage();
+            });
+            $('#message').on('keydown', function(event) {
+                if (event.keyCode === 13) { // Enter 키의 keyCode는 13입니다.
+                    event.preventDefault();
+                    sendMessage();
+                }
+            });
+        });
+
+
+
+        function sendMessage() {
+            var message = $('#message').val().trim();
+            if (message) {
+                var chatContainer = $('#chat-container');
+                var htmlText = (new showdown.Converter()).makeHtml(message);
+                htmlText = htmlText.replaceAll("\n","<br>");
+                var div = $('<div class="message user-message">' + htmlText + '</div>');
+                chatContainer.append(div);
+                chatContainer.animate({scrollTop: chatContainer.prop("scrollHeight")}, 500);
+                socket.emit('message', {message: message, room: soketId });
+                $('#message').val('');
+            }
+        }
+        function pythonToAceEditor(codeString) {
+
+            if ( $(codeString).find('code').length > 0 ){
+                
+                codeString.find('pre').append('<ace-editor>');
+                codeString.find('ace-editor').text(codeString.find('code').text());
+                
+                lang = "";
+                if ( $(codeString).find('code').attr('class') != undefined ){
+                    lang = $(codeString).find('code').attr('class').split(" ")[0];
+                    codeString.find('ace-editor').attr('language', lang);       
+                }
+                codeString.find('code').remove();
+            }
+
+            return codeString;
+        }
+        function extractString(str) {
+            // 첫 번째 ``` 문자열 위치 찾기
+            const index = str.indexOf('```');
+            
+            if (index === -1) {
+                // ``` 문자열이 존재하지 않는 경우
+                return null;
+            } else {
+                // ``` 문자열의 위치에서부터 개행 문자 또는 문자열 끝까지 추출
+                const startIndex = index + '```'.length;
+                const endIndex = str.indexOf('\n', startIndex);
+                const value = endIndex === -1 ? str.substr(startIndex) : str.substr(startIndex, endIndex - startIndex);
+                return value.trim();
+            }
+        }
+
+    </script>
