@@ -7,6 +7,7 @@ class chatGPT:
 
     apiKey = ""
     history = {}
+    
 
     def __init__(self, apiKey):
         logging.debug( "self.apiKey : %s"%self.apiKey )
