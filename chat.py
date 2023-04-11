@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.middleware.proxy_fix import ProxyFix
-import yaml
+import yaml, datetime
 import myai
 import logging
 
@@ -15,17 +15,16 @@ class chatGPTChat:
 
     def __init__(self):
         self.app = Flask(__name__)
+        self.app.logger.setLevel(logging.WARNING)
         self.app.wsgi_app = ProxyFix(self.app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
         self.socketio = SocketIO(self.app)
 
         keys = self.get_yaml()
         self.api_key = str(keys['apiKey'])
         self.tokenKeys = str(keys['key'])
-        flaskKey = keys['flaskKey']
-
-        self.app.config['SECRET_KEY'] = flaskKey
-        self.app.logger.setLevel(logging.WARNING)
-
+        
+        self.app.config['SECRET_KEY'] = keys['flaskKey']
+        
         try:
             self.chatGPT = myai.chatGPT(str(keys['apiKey']))
 
@@ -37,11 +36,19 @@ class chatGPTChat:
             f.write(text+"\n")
 
     def get_yaml(self):
-        with open('key.yaml', 'r') as file:
-            try:
+        try:
+            with open('key.yaml', 'r') as file:
                 data = yaml.safe_load(file)
-            except yaml.YAMLError as e:
-                logging.debug(e)
+        except FileNotFoundError:
+            data = {
+                'key': 'key',
+                'apiKey': 'apiKey',
+                'flaskKey': 'flaskKey'
+            }
+            with open('key.yaml', 'w') as file:
+                yaml.safe_dump(data, file)
+        except yaml.YAMLError as e:
+            logging.debug(e)
         return data
 
     def run(self):
@@ -92,7 +99,9 @@ class chatGPTChat:
                 
                 logging.debug( "api_key :%s"%self.api_key)
 
-                self.append_to_file("chat.log", "===================")
+                start_date = datetime.datetime.now()
+                
+                self.append_to_file("chat.log", "==========START %s========="%start_date.strftime("%Y/%m/%d %H:%M:%S"))
                 self.append_to_file("chat.log", '질문자 : ' + remote_addr + " / " + data['room'])
                 self.append_to_file("chat.log", '질문 : ' + data['message'])
                 
@@ -106,7 +115,11 @@ class chatGPTChat:
                     logging.debug('답변 : ' + aimsg)
                     emit('response', aimsg, room=data['room'])
                 
-                self.append_to_file("chat.log", "===================")
+                end_date = datetime.datetime.now()
+                time_diff = end_date - start_date
+                time_diff_in_seconds = time_diff.total_seconds()
+                self.append_to_file("chat.log", "==========소요시간 : %s========="%time_diff_in_seconds)
+                self.append_to_file("chat.log", "==========END %s=============="%end_date.strftime("%Y/%m/%d %H:%M:%S"))
                 logging.debug("===================")
 
             except Exception as e:
