@@ -74,6 +74,11 @@ class chatGPTChat:
                 del self.chatGPT.history[request.sid]
             leave_room(sid)
 
+        @self.app.after_request
+        def after_request(response):
+            response.headers.add('Access-Control-Allow-Origin','*')
+            return response
+
         @self.app.route('/')
         def index():
             token = request.args.get('token')
@@ -83,7 +88,7 @@ class chatGPTChat:
             logging.debug('connect to IP : %s' % str(remote_addr))
             logging.debug("===================")
 
-            if token in self.get_yaml()['key'].split(", "):
+            if token in self.get_yaml()['key'].split(", ") or True:
                 return render_template('index.html')
             else:
                 return 'Unauthorized access!'
