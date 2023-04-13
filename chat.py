@@ -1,7 +1,7 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_from_directory
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.middleware.proxy_fix import ProxyFix
-import yaml, datetime
+import yaml, datetime, os
 import myai
 import logging
 
@@ -92,6 +92,11 @@ class chatGPTChat:
                 return render_template('index.html')
             else:
                 return 'Unauthorized access!'
+        
+        # robots.txt 파일을 반환
+        @self.app.route('/robots.txt')
+        def serve_robots():
+            return send_from_directory('static', 'robots.txt', mimetype='text/plain')
 
         @self.socketio.on('message')
         def handle_message(data):
