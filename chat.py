@@ -106,9 +106,9 @@ class chatGPTChat:
 
                 start_date = datetime.datetime.now()
                 
-                self.append_to_file("chat.log", "==========START %s========="%start_date.strftime("%Y/%m/%d %H:%M:%S"))
-                self.append_to_file("chat.log", '질문자 : ' + remote_addr + " / " + data['room'])
-                self.append_to_file("chat.log", '질문 : ' + data['message'])
+                # self.append_to_file("chat.log", "==========START %s========="%start_date.strftime("%Y/%m/%d %H:%M:%S"))
+                # self.append_to_file("chat.log", '질문자 : ' + remote_addr + " / " + data['room'])
+                # self.append_to_file("chat.log", '질문 : ' + data['message'])
                 
                 logging.debug("===================")
                 logging.debug('질문자 : ' + data['room'])
@@ -123,8 +123,8 @@ class chatGPTChat:
                 end_date = datetime.datetime.now()
                 time_diff = end_date - start_date
                 time_diff_in_seconds = time_diff.total_seconds()
-                self.append_to_file("chat.log", "==========소요시간 : %s========="%time_diff_in_seconds)
-                self.append_to_file("chat.log", "==========END %s=============="%end_date.strftime("%Y/%m/%d %H:%M:%S"))
+                # self.append_to_file("chat.log", "==========소요시간 : %s========="%time_diff_in_seconds)
+                # self.append_to_file("chat.log", "==========END %s=============="%end_date.strftime("%Y/%m/%d %H:%M:%S"))
                 logging.debug("===================")
 
             except Exception as e:

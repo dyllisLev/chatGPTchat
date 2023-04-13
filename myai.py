@@ -1,7 +1,7 @@
 import openai, os, json
 import logging
 # 로그 파일 설정
-logging.basicConfig(filename='my_log_file.log', level=logging.DEBUG)
+logging.basicConfig(filename='my_log_file.log', level=logging.INFO)
 
 class chatGPT:
 
